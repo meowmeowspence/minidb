@@ -119,4 +119,10 @@ public class HeapFile {
                 recordId.getSlotId()
         );
     }
+
+    public HeapFileCursor openCursor() {
+        return new HeapFileCursor(
+                diskManager
+        );
+    }
 }
