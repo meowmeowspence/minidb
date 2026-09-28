@@ -1,5 +1,7 @@
 package minidb;
 
+import java.util.Objects;
+
 public class RecordId {
 
     private final int pageId;
@@ -32,6 +34,29 @@ public class RecordId {
 
     public int getSlotId() {
         return slotId;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+
+        if (this == other) {
+            return true;
+        }
+
+        if (!(other instanceof RecordId recordId)) {
+            return false;
+        }
+
+        return pageId == recordId.pageId
+                && slotId == recordId.slotId;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                pageId,
+                slotId
+        );
     }
 
     @Override
