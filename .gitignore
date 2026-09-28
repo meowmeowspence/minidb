@@ -10,3 +10,6 @@ target/
 
 # Logs
 *.log
+
+# MiniDB database files
+*.db
