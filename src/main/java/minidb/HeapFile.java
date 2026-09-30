@@ -125,4 +125,8 @@ public class HeapFile {
                 diskManager
         );
     }
+
+    public int getPageCount() {
+        return diskManager.getPageCount();
+    }
 }

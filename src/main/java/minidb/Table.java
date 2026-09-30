@@ -128,4 +128,9 @@ public class Table {
             }
         }
     }
+
+    public int getPageCount() {
+        return heapFile.getPageCount();
+    }
+
 }
