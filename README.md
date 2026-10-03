@@ -114,6 +114,17 @@ execution.
 - Cost-based access-path selection
 - Cost-based join algorithm selection
 
+### Transactions and Concurrency
+
+- Transaction IDs and lifecycle states
+- Commit and abort
+- Row-level locking using `RecordId`
+- Shared locks for concurrent readers
+- Exclusive locks for writers
+- Shared-to-exclusive lock upgrades
+- Locks held until transaction completion
+- Blocking lock waits using Java synchronization
+
 ## Example Query Plan
 
 A query conceptually equivalent to:
@@ -298,6 +309,9 @@ Current limitations include:
 - no transaction manager yet
 - no concurrency control yet
 - no write-ahead logging or crash recovery yet
+- transaction locking is not yet integrated into all table operations
+- no deadlock detection or prevention yet
+- no rollback/undo of modified records yet
 
 These limitations are being implemented incrementally as the project develops.
 
