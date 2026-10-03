@@ -234,6 +234,53 @@ The estimates are intentionally simplified and are designed to demonstrate
 physical query-plan selection rather than reproduce a production DBMS cost
 model.
 
+## Design Layers
+
+MiniDB separates relational execution from physical storage.
+
+### Logical data
+
+`Schema`, `Column`, and `Tuple` represent relational records.
+
+### Execution
+
+Operators expose an iterator-style interface:
+
+```text
+open()
+next()
+next()
+...
+close()
+```
+
+This allows operators to be composed into query-plan trees.
+
+### Access methods
+
+Sequential scans and index lookups provide alternative methods for retrieving
+table records.
+
+### Storage
+
+`HeapFile`, `SlottedPage`, `Page`, and `DiskManager` are responsible for the
+physical representation of records.
+
+### Optimization
+
+Statistics and simplified cost formulas allow MiniDB to compare multiple
+physical implementations of the same logical operation.
+
+The optimizer currently makes two kinds of decisions:
+
+```text
+Equality predicate:
+Seq Scan vs B+ Tree vs Hash Index
+
+Equality join:
+Nested Loop vs Hash Join vs Sort-Merge
+```
+
 ## Current Limitations
 
 MiniDB is an educational database engine rather than a production DBMS.
@@ -278,6 +325,23 @@ After compiling:
 ```bash
 java -cp target/classes minidb.Demo
 ```
+
+## Run the Benchmark
+
+After compiling:
+
+```bash
+java -cp target/classes minidb.BenchmarkRunner
+```
+
+The benchmark compares exact-key lookup using:
+
+- sequential scanning,
+- the B+ tree,
+- the hash index.
+
+The reported values are simple JVM wall-clock measurements and should be
+treated as illustrative rather than rigorous performance measurements.
 
 ## Technology
 
