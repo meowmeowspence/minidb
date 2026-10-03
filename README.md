@@ -3,29 +3,285 @@
 MiniDB is a small relational database management system implemented from
 scratch in Java.
 
-The project is intended to explore how relational database systems work
-internally, including storage, indexing, query processing, query optimization,
-transactions, concurrency control, and recovery.
+The project explores the internals of a relational DBMS, including physical
+storage, indexing, relational query execution, external sorting, alternative
+join algorithms, statistics, cost estimation, and physical plan selection.
 
-## Planned Features
+MiniDB does not use an existing database engine for storage or query
+execution.
 
-- Disk-based page storage
+## Current Architecture
+
+```text
+                    Query / Physical Planning
+
+                AccessPathOptimizer
+                  /      |       \
+                 /       |        \
+          Seq Scan    B+ Tree    Hash Index
+
+                       JoinOptimizer
+                   /        |        \
+                  /         |         \
+        Nested Loop      Hash      Sort-Merge
+
+
+                      Query Execution
+
+                     Projection
+                         |
+                       Filter
+                         |
+              +----------+----------+
+              |                     |
+           Seq Scan                 Join
+                                     |
+                              child operators
+
+
+                       Storage Engine
+
+                          Table
+                            |
+                         HeapFile
+                            |
+                      SlottedPage
+                            |
+                           Page
+                            |
+                       DiskManager
+                            |
+                         .db file
+```
+
+## Implemented Features
+
+### Storage
+
+- 4 KB fixed-size database pages
+- Disk-backed page allocation, reading, and writing
+- Slotted-page layout for variable-length records
 - Heap-file organization
-- Tuple and schema representation
-- B+ tree indexes
-- Hash indexes
-- Sequential scans
-- Selection and projection
-- Join algorithms
-- External sorting
-- Query execution plans
-- Cost-based query optimization
-- Transaction management
-- Concurrency control
-- Crash recovery
+- Record identifiers using page ID and slot ID
+- Binary tuple serialization and deserialization
+
+### Indexing
+
+- B+ tree
+    - exact-key lookup
+    - insertion
+    - leaf splitting
+    - internal-node splitting
+    - linked leaves
+    - range lookup
+- Hash index
+    - exact-key lookup
+    - bucket-based collision handling
+
+### Query Execution
+
+- Iterator-style `open / next / close` execution model
+- Sequential table scans
+- Selection / filtering
+- Projection
+- Nested-loop join
+- In-memory hash join
+- Sort-merge join
+- Composable physical query-plan trees
+
+### Sorting
+
+- External merge sort
+- Configurable in-memory run capacity
+- Temporary sorted runs written to disk
+- Multi-pass pairwise merging
+
+### Query Optimization
+
+- Table statistics
+    - row count
+    - page count
+    - distinct-value counts
+- Basic equality-cardinality estimation
+- Cost estimation for:
+    - sequential scans
+    - B+ tree lookups
+    - hash-index lookups
+    - nested-loop joins
+    - hash joins
+    - external sorting
+    - sort-merge joins
+- Cost-based access-path selection
+- Cost-based join algorithm selection
+
+## Example Query Plan
+
+A query conceptually equivalent to:
+
+```sql
+SELECT species, location
+FROM animals
+JOIN observations
+    ON animal_id = animal_ref_id;
+```
+
+can be represented using a physical plan such as:
+
+```text
+Projection(species, location)
+            |
+        Hash Join
+        /       \
+       /         \
+Seq Scan       Seq Scan
+Animals       Observations
+```
+
+MiniDB can also execute the same logical join using nested-loop join or
+sort-merge join.
+
+The join optimizer estimates the cost of the available physical alternatives
+and chooses one.
+
+## Storage Layout
+
+MiniDB stores heap-file records in 4096-byte pages.
+
+A slotted page is organized approximately as:
+
+```text
++----------------------------------+
+| Page header                      |
+| tuple count / free-space pointer |
++----------------------------------+
+| Slot 0: offset + length          |
+| Slot 1: offset + length          |
+| Slot 2: offset + length          |
++----------------------------------+
+|                                  |
+|          free space              |
+|                                  |
++----------------------------------+
+| tuple data                       |
+| tuple data                       |
+| tuple data                       |
++----------------------------------+
+```
+
+The slot directory grows forward while tuple data grows backward from the end
+of the page.
+
+## Indexes
+
+### B+ Tree
+
+The current B+ tree supports integer keys mapped to heap-file `RecordId`
+values.
+
+Leaf nodes are linked to support range traversal.
+
+The current B+ tree structure is memory-resident; heap-file records themselves
+remain disk-backed.
+
+### Hash Index
+
+The hash index maps integer keys to `RecordId` values using buckets with
+collision handling.
+
+The current hash index is also memory-resident.
+
+## External Sorting
+
+MiniDB's external sort operator does not require its entire input to fit in
+memory.
+
+It:
+
+1. reads a limited number of tuples,
+2. sorts them in memory,
+3. writes a sorted run to a temporary file,
+4. repeats until all input is consumed,
+5. merges the sorted runs until one sorted output remains.
+
+The current memory limit is modeled as a maximum tuple count per run rather
+than an exact byte-level buffer budget.
+
+## Cost Model
+
+MiniDB uses simplified abstract cost units rather than measured milliseconds.
+
+For example, the optimizer can compare:
+
+```text
+Sequential scan
+vs.
+B+ tree lookup
+vs.
+Hash-index lookup
+```
+
+and:
+
+```text
+Nested-loop join
+vs.
+Hash join
+vs.
+Sort-merge join
+```
+
+The estimates are intentionally simplified and are designed to demonstrate
+physical query-plan selection rather than reproduce a production DBMS cost
+model.
+
+## Current Limitations
+
+MiniDB is an educational database engine rather than a production DBMS.
+
+Current limitations include:
+
+- no SQL parser yet
+- no SQL NULL values
+- integer-only indexed keys
+- indexes are currently memory-resident
+- no persistent system catalog
+- simplified optimizer statistics
+- simplified cost formulas
+- hash join requires its build side to fit within a configured memory limit
+- no transaction manager yet
+- no concurrency control yet
+- no write-ahead logging or crash recovery yet
+
+These limitations are being implemented incrementally as the project develops.
+
+## Requirements
+
+- Java 21
+- Maven
+
+## Build
+
+```bash
+mvn compile
+```
+
+## Run Tests
+
+```bash
+mvn test
+```
+
+## Run the Demo
+
+After compiling:
+
+```bash
+java -cp target/classes minidb.Demo
+```
 
 ## Technology
 
 - Java 21
 - Maven
-- JUnit
+- JUnit 5
+- Git / GitHub
