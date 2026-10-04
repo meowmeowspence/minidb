@@ -172,4 +172,62 @@ class HeapFileTest {
         }
     }
 
+    @Test
+    void recordCanBeUpdatedWithoutChangingRecordId() {
+
+        Path path =
+                tempDirectory.resolve(
+                        "heap.db"
+                );
+
+        try (
+                DiskManager disk =
+                        new DiskManager(path)
+        ) {
+
+            HeapFile heap =
+                    new HeapFile(disk);
+
+            RecordId recordId =
+                    heap.insert(
+                            new byte[] {
+                                    1,
+                                    2,
+                                    3
+                            }
+                    );
+
+            byte[] replacement = {
+                    10,
+                    20,
+                    30,
+                    40,
+                    50
+            };
+
+            heap.update(
+                    recordId,
+                    replacement
+            );
+
+            assertArrayEquals(
+                    replacement,
+                    heap.read(recordId)
+            );
+
+            /*
+             * The original RID remains valid.
+             */
+            assertEquals(
+                    0,
+                    recordId.getPageId()
+            );
+
+            assertEquals(
+                    0,
+                    recordId.getSlotId()
+            );
+        }
+    }
+
 }

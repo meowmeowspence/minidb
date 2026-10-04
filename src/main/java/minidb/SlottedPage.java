@@ -1,6 +1,8 @@
 package minidb;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SlottedPage {
 
@@ -158,6 +160,102 @@ public class SlottedPage {
 
     public Page getPage() {
         return page;
+    }
+
+    public void updateTuple(
+            int slotId,
+            byte[] tupleBytes
+    ) {
+
+        validateSlotId(slotId);
+
+        if (tupleBytes == null) {
+            throw new IllegalArgumentException(
+                    "Tuple bytes cannot be null"
+            );
+        }
+
+        /*
+         * Read every tuple before modifying
+         * the physical page.
+         */
+        List<byte[]> tuples =
+                new ArrayList<>();
+
+        int totalTupleBytes = 0;
+
+        for (
+                int i = 0;
+                i < getTupleCount();
+                i++
+        ) {
+
+            byte[] bytes;
+
+            if (i == slotId) {
+                bytes = tupleBytes;
+            } else {
+                bytes = readTuple(i);
+            }
+
+            tuples.add(bytes);
+
+            totalTupleBytes +=
+                    bytes.length;
+        }
+
+        int requiredSpace =
+                HEADER_SIZE
+                        + tuples.size()
+                        * SLOT_SIZE
+                        + totalTupleBytes;
+
+        /*
+         * Check BEFORE touching the original
+         * page. If the updated record cannot
+         * fit, the page remains unchanged.
+         */
+        if (requiredSpace
+                > Page.PAGE_SIZE) {
+
+            throw new IllegalStateException(
+                    "Updated tuple does not fit on page"
+            );
+        }
+
+        /*
+         * Clear the page.
+         */
+        page.write(
+                0,
+                new byte[Page.PAGE_SIZE]
+        );
+
+        /*
+         * Restore the empty slotted-page
+         * header.
+         */
+        writeInt(
+                TUPLE_COUNT_OFFSET,
+                0
+        );
+
+        writeInt(
+                FREE_SPACE_END_OFFSET,
+                Page.PAGE_SIZE
+        );
+
+        /*
+         * Reinsert tuples in their original
+         * order.
+         *
+         * Because the order is unchanged,
+         * their slot IDs remain unchanged.
+         */
+        for (byte[] bytes : tuples) {
+
+            insertTuple(bytes);
+        }
     }
 
     private int getFreeSpaceEnd() {

@@ -160,4 +160,146 @@ class SlottedPageTest {
         );
     }
 
+    @Test
+    void tupleCanBeUpdated() {
+
+        Page page =
+                new Page(0);
+
+        SlottedPage slottedPage =
+                new SlottedPage(page);
+
+        int slot =
+                slottedPage.insertTuple(
+                        new byte[] {
+                                1,
+                                2,
+                                3
+                        }
+                );
+
+        byte[] replacement = {
+                9,
+                8,
+                7,
+                6
+        };
+
+        slottedPage.updateTuple(
+                slot,
+                replacement
+        );
+
+        assertArrayEquals(
+                replacement,
+                slottedPage.readTuple(slot)
+        );
+
+        assertEquals(
+                1,
+                slottedPage.getTupleCount()
+        );
+    }
+
+    @Test
+    void growingTuplePreservesOtherSlots() {
+
+        Page page =
+                new Page(0);
+
+        SlottedPage slottedPage =
+                new SlottedPage(page);
+
+        int firstSlot =
+                slottedPage.insertTuple(
+                        new byte[] {
+                                1,
+                                2
+                        }
+                );
+
+        byte[] second = {
+                10,
+                20,
+                30
+        };
+
+        int secondSlot =
+                slottedPage.insertTuple(
+                        second
+                );
+
+        byte[] larger =
+                new byte[500];
+
+        larger[0] = 99;
+        larger[499] = 88;
+
+        slottedPage.updateTuple(
+                firstSlot,
+                larger
+        );
+
+        assertArrayEquals(
+                larger,
+                slottedPage.readTuple(
+                        firstSlot
+                )
+        );
+
+        assertArrayEquals(
+                second,
+                slottedPage.readTuple(
+                        secondSlot
+                )
+        );
+
+        assertEquals(
+                2,
+                slottedPage.getTupleCount()
+        );
+    }
+
+    @Test
+    void oversizedUpdateDoesNotDestroyOriginalTuple() {
+
+        Page page =
+                new Page(0);
+
+        SlottedPage slottedPage =
+                new SlottedPage(page);
+
+        byte[] original = {
+                1,
+                2,
+                3
+        };
+
+        int slot =
+                slottedPage.insertTuple(
+                        original
+                );
+
+        byte[] tooLarge =
+                new byte[Page.PAGE_SIZE];
+
+        assertThrows(
+                IllegalStateException.class,
+                () ->
+                        slottedPage.updateTuple(
+                                slot,
+                                tooLarge
+                        )
+        );
+
+        /*
+         * Failed update must not corrupt
+         * the existing record.
+         */
+        assertArrayEquals(
+                original,
+                slottedPage.readTuple(slot)
+        );
+    }
+
 }

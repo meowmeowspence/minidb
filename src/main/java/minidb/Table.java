@@ -133,4 +133,36 @@ public class Table {
         return heapFile.getPageCount();
     }
 
+    public void update(
+            RecordId recordId,
+            Tuple tuple
+    ) {
+
+        if (recordId == null) {
+            throw new IllegalArgumentException(
+                    "Record ID cannot be null"
+            );
+        }
+
+        if (tuple == null) {
+            throw new IllegalArgumentException(
+                    "Tuple cannot be null"
+            );
+        }
+
+        validateSchema(
+                tuple.getSchema()
+        );
+
+        byte[] bytes =
+                serializer.serialize(
+                        tuple
+                );
+
+        heapFile.update(
+                recordId,
+                bytes
+        );
+    }
+
 }
