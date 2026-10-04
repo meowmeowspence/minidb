@@ -133,4 +133,67 @@ class TableTest {
                 )
         );
     }
+
+    @Test
+    void tupleCanBeUpdatedThroughTable() {
+
+        Schema schema =
+                animalSchema();
+
+        Path path =
+                tempDirectory.resolve(
+                        "animals.db"
+                );
+
+        try (
+                DiskManager disk =
+                        new DiskManager(path)
+        ) {
+
+            Table table =
+                    new Table(
+                            schema,
+                            new HeapFile(disk)
+                    );
+
+            RecordId recordId =
+                    table.insert(
+                            new Tuple(
+                                    schema,
+                                    List.of(
+                                            1,
+                                            "Gecko",
+                                            4
+                                    )
+                            )
+                    );
+
+            table.update(
+                    recordId,
+                    new Tuple(
+                            schema,
+                            List.of(
+                                    1,
+                                    "Leopard Gecko",
+                                    5
+                            )
+                    )
+            );
+
+            Tuple updated =
+                    table.read(
+                            recordId
+                    );
+
+            assertEquals(
+                    "Leopard Gecko",
+                    updated.getValue(1)
+            );
+
+            assertEquals(
+                    5,
+                    updated.getValue(2)
+            );
+        }
+    }
 }

@@ -31,7 +31,7 @@ public class DiskManager implements AutoCloseable {
         }
     }
 
-    public Page allocatePage() {
+    public synchronized Page allocatePage() {
 
         try {
             long currentLength =
@@ -58,7 +58,7 @@ public class DiskManager implements AutoCloseable {
         }
     }
 
-    public void writePage(Page page) {
+    public synchronized void writePage(Page page) {
 
         try {
             long offset =
@@ -79,7 +79,7 @@ public class DiskManager implements AutoCloseable {
         }
     }
 
-    public Page readPage(int pageId) {
+    public synchronized Page readPage(int pageId) {
 
         try {
             if (pageId < 0) {
@@ -120,7 +120,7 @@ public class DiskManager implements AutoCloseable {
         }
     }
 
-    public int getPageCount() {
+    public synchronized int getPageCount() {
 
         try {
             return Math.toIntExact(
@@ -137,7 +137,7 @@ public class DiskManager implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
 
         try {
             file.close();

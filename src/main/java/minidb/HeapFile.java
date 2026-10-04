@@ -129,4 +129,39 @@ public class HeapFile {
     public int getPageCount() {
         return diskManager.getPageCount();
     }
+
+    public synchronized void update(
+            RecordId recordId,
+            byte[] tupleBytes
+    ) {
+
+        if (recordId == null) {
+            throw new IllegalArgumentException(
+                    "Record ID cannot be null"
+            );
+        }
+
+        if (tupleBytes == null) {
+            throw new IllegalArgumentException(
+                    "Tuple bytes cannot be null"
+            );
+        }
+
+        Page page =
+                diskManager.readPage(
+                        recordId.getPageId()
+                );
+
+        SlottedPage slottedPage =
+                new SlottedPage(page);
+
+        slottedPage.updateTuple(
+                recordId.getSlotId(),
+                tupleBytes
+        );
+
+        diskManager.writePage(
+                slottedPage.getPage()
+        );
+    }
 }
