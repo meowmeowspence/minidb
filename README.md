@@ -117,13 +117,15 @@ execution.
 ### Transactions and Concurrency
 
 - Transaction IDs and lifecycle states
-- Commit and abort
-- Row-level locking using `RecordId`
-- Shared locks for concurrent readers
-- Exclusive locks for writers
+- Commit and abort states
+- Transaction-aware record reads and updates
+- Row-level shared and exclusive locks
 - Shared-to-exclusive lock upgrades
 - Locks held until transaction completion
-- Blocking lock waits using Java synchronization
+- Concurrent readers
+- Blocking conflicting readers and writers
+- Thread-safe disk access
+- Record updates that preserve `RecordId`
 
 ## Example Query Plan
 
@@ -312,6 +314,8 @@ Current limitations include:
 - transaction locking is not yet integrated into all table operations
 - no deadlock detection or prevention yet
 - no rollback/undo of modified records yet
+- aborted updates are not yet undone
+- transactional inserts and deletes are not yet implemented
 
 These limitations are being implemented incrementally as the project develops.
 
