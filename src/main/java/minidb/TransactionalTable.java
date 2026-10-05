@@ -6,9 +6,28 @@ public class TransactionalTable {
 
     private final LockManager lockManager;
 
+    private final String tableName;
+
+    private final LogManager logManager;
+
     public TransactionalTable(
             Table table,
             LockManager lockManager
+    ) {
+
+        this(
+                null,
+                table,
+                lockManager,
+                null
+        );
+    }
+
+    public TransactionalTable(
+            String tableName,
+            Table table,
+            LockManager lockManager,
+            LogManager logManager
     ) {
 
         if (table == null) {
@@ -23,8 +42,30 @@ public class TransactionalTable {
             );
         }
 
-        this.table = table;
-        this.lockManager = lockManager;
+        if (
+                logManager != null
+                        && (
+                        tableName == null
+                                || tableName.isBlank()
+                )
+        ) {
+
+            throw new IllegalArgumentException(
+                    "Logged table must have a name"
+            );
+        }
+
+        this.tableName =
+                tableName;
+
+        this.table =
+                table;
+
+        this.lockManager =
+                lockManager;
+
+        this.logManager =
+                logManager;
     }
 
     public Schema getSchema() {
@@ -59,17 +100,57 @@ public class TransactionalTable {
     ) {
 
         /*
-         * Updating requires exclusive access
-         * to the record.
+         * Updating requires exclusive access.
          */
         lockManager.acquireExclusive(
                 transaction,
                 recordId
         );
 
-        table.update(
+        /*
+         * Old non-WAL mode remains available
+         * for existing uses and tests.
+         */
+        if (logManager == null) {
+
+            table.update(
+                    recordId,
+                    tuple
+            );
+
+            return;
+        }
+
+        byte[] beforeImage =
+                table.readRaw(
+                        recordId
+                );
+
+        byte[] afterImage =
+                table.serializeTuple(
+                        tuple
+                );
+
+        /*
+         * WRITE-AHEAD RULE:
+         *
+         * 1. append UPDATE log record
+         * 2. force log to durable storage
+         * 3. modify database page
+         */
+        logManager.appendUpdate(
+                transaction.getId(),
+                tableName,
                 recordId,
-                tuple
+                beforeImage,
+                afterImage
+        );
+
+        logManager.flush();
+
+        table.updateRaw(
+                recordId,
+                afterImage
         );
     }
 }
