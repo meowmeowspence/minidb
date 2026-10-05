@@ -1,57 +1,86 @@
 # MiniDB
 
-MiniDB is a small relational database management system implemented from
-scratch in Java.
+MiniDB is an educational relational database engine implemented from scratch
+in Java 21.
 
 The project explores the internals of a relational DBMS, including physical
 storage, indexing, relational query execution, external sorting, alternative
-join algorithms, statistics, cost estimation, and physical plan selection.
+join algorithms, cost-based query optimization, transaction management,
+concurrency control, write-ahead logging, and crash recovery.
 
 MiniDB does not use an existing database engine for storage or query
 execution.
 
+## Highlights
+
+- Disk-backed heap-file storage with 4 KB slotted pages
+- B+ tree and hash indexing
+- Three physical join algorithms
+- Disk-backed external merge sort
+- Cost-based access-path and join optimization
+- Row-level shared/exclusive locking
+- Write-ahead logging with REDO/UNDO crash recovery
+- 100+ automated JUnit tests
+
 ## Current Architecture
 
 ```text
-                    Query / Physical Planning
+                         MiniDB
 
-                AccessPathOptimizer
-                  /      |       \
-                 /       |        \
-          Seq Scan    B+ Tree    Hash Index
+                  QUERY / PHYSICAL PLANNING
+
+               AccessPathOptimizer
+                 /      |       \
+                /       |        \
+          Seq Scan   B+ Tree   Hash Index
 
                        JoinOptimizer
-                   /        |        \
-                  /         |         \
-        Nested Loop      Hash      Sort-Merge
+                  /        |        \
+                 /         |         \
+          Nested Loop    Hash    Sort-Merge
 
 
-                      Query Execution
+                     QUERY EXECUTION
 
-                     Projection
+             Projection / Filter / Join
                          |
-                       Filter
+                    Child Operators
                          |
-              +----------+----------+
-              |                     |
-           Seq Scan                 Join
-                                     |
-                              child operators
+                 Sequential / Index
+                       Access
 
 
-                       Storage Engine
+                 TRANSACTION MANAGEMENT
 
-                          Table
-                            |
-                         HeapFile
-                            |
-                      SlottedPage
-                            |
-                           Page
-                            |
-                       DiskManager
-                            |
-                         .db file
+                    TransactionManager
+                          |
+             +------------+-------------+
+             |                          |
+         LockManager                 LogManager
+        S / X row locks                 |
+             |                    Write-Ahead Log
+             |                          |
+             +------------+-------------+
+                          |
+                  TransactionalTable
+                          |
+                     RecoveryManager
+                     REDO / UNDO
+
+
+                     STORAGE ENGINE
+
+                         Table
+                           |
+                        HeapFile
+                           |
+                     SlottedPage
+                           |
+                          Page
+                           |
+                      DiskManager
+                           |
+                        .db file
 ```
 
 ## Implemented Features
@@ -120,8 +149,9 @@ execution.
 - Commit and abort
 - Row-level shared and exclusive locks
 - Shared-to-exclusive lock upgrades
-- Locks held until transaction completion
+- Rigorous two-phase locking: locks are held until transaction completion
 - Transaction-aware record reads and updates
+- Thread-safe disk access
 - Write-ahead logging for record updates
 - Monotonically increasing log sequence numbers
 - Full before-images and after-images
@@ -252,6 +282,27 @@ The estimates are intentionally simplified and are designed to demonstrate
 physical query-plan selection rather than reproduce a production DBMS cost
 model.
 
+## Transaction Recovery
+
+MiniDB uses a simplified write-ahead logging protocol for transactional
+record updates.
+
+Before a database record is modified, MiniDB writes an update record
+containing both the before-image and after-image to the WAL and forces the
+log to durable storage.
+
+```text
+UPDATE request
+      |
+      v
+Write WAL record
+      |
+      v
+Flush WAL
+      |
+      v
+Modify database page
+
 ## Design Layers
 
 MiniDB separates relational execution from physical storage.
@@ -306,27 +357,20 @@ MiniDB is an educational database engine rather than a production DBMS.
 Current limitations include:
 
 - no SQL parser yet
-- no SQL NULL values
+- no SQL `NULL` values
 - integer-only indexed keys
-- indexes are currently memory-resident
+- B+ tree and hash indexes are memory-resident
 - no persistent system catalog
-- simplified optimizer statistics
-- simplified cost formulas
+- simplified optimizer statistics and cost formulas
 - hash join requires its build side to fit within a configured memory limit
-- no transaction manager yet
-- no concurrency control yet
-- transaction locking is not yet integrated into all table operations
-- no deadlock detection or prevention yet
-- no rollback/undo of modified records yet
+- transaction-aware locking currently covers record reads and updates, not all table operations
 - transactional inserts and deletes are not yet implemented
-- WAL currently covers record updates, not transactional inserts or deletes
+- WAL currently covers record updates, not inserts or deletes
 - recovery uses full before/after images rather than ARIES
-- no checkpoints yet
+- no checkpoints
 - no pageLSN or compensation log records
-- no deadlock detection or prevention yet
-- indexes are still memory-resident
-
-These limitations are being implemented incrementally as the project develops.
+- no deadlock detection or prevention
+- no SQL-level transaction commands
 
 ## Requirements
 
