@@ -150,4 +150,19 @@ public class DiskManager implements AutoCloseable {
         }
     }
 
+    public synchronized void flush() {
+
+        try {
+
+            file.getFD().sync();
+
+        } catch (java.io.IOException e) {
+
+            throw new IllegalStateException(
+                    "Failed to flush database file",
+                    e
+            );
+        }
+    }
+
 }

@@ -165,4 +165,47 @@ public class Table {
         );
     }
 
+    byte[] readRaw(
+            RecordId recordId
+    ) {
+
+        return heapFile.read(
+                recordId
+        );
+    }
+
+    void updateRaw(
+            RecordId recordId,
+            byte[] bytes
+    ) {
+
+        heapFile.update(
+                recordId,
+                bytes
+        );
+    }
+
+    byte[] serializeTuple(
+            Tuple tuple
+    ) {
+
+        if (tuple == null) {
+            throw new IllegalArgumentException(
+                    "Tuple cannot be null"
+            );
+        }
+
+        validateSchema(
+                tuple.getSchema()
+        );
+
+        return serializer.serialize(
+                tuple
+        );
+    }
+
+    void flush() {
+        heapFile.flush();
+    }
+
 }

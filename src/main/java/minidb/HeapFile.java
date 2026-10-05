@@ -164,4 +164,8 @@ public class HeapFile {
                 slottedPage.getPage()
         );
     }
+
+    public void flush() {
+        diskManager.flush();
+    }
 }

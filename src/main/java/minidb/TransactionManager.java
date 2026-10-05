@@ -8,8 +8,25 @@ public class TransactionManager {
 
     private final LockManager lockManager;
 
+    private final LogManager logManager;
+
+    private final RecoveryManager recoveryManager;
+
     public TransactionManager(
             LockManager lockManager
+    ) {
+
+        this(
+                lockManager,
+                null,
+                null
+        );
+    }
+
+    public TransactionManager(
+            LockManager lockManager,
+            LogManager logManager,
+            RecoveryManager recoveryManager
     ) {
 
         if (lockManager == null) {
@@ -18,11 +35,40 @@ public class TransactionManager {
             );
         }
 
+        if (
+                (logManager == null)
+                        != (recoveryManager == null)
+        ) {
+
+            throw new IllegalArgumentException(
+                    "Log manager and recovery manager must be provided together"
+            );
+        }
+
         this.lockManager =
                 lockManager;
 
+        this.logManager =
+                logManager;
+
+        this.recoveryManager =
+                recoveryManager;
+
+        long firstTransactionId =
+                1;
+
+        if (logManager != null) {
+
+            firstTransactionId =
+                    logManager
+                            .getMaxTransactionId()
+                            + 1;
+        }
+
         this.nextTransactionId =
-                new AtomicLong(1);
+                new AtomicLong(
+                        firstTransactionId
+                );
     }
 
     public Transaction begin() {
@@ -45,10 +91,18 @@ public class TransactionManager {
         );
 
         /*
-         * Mark the transaction finished
-         * before releasing its locks so it
-         * cannot acquire new locks afterward.
+         * COMMIT must become durable before we
+         * tell the caller that commit succeeded.
          */
+        if (logManager != null) {
+
+            logManager.appendCommit(
+                    transaction.getId()
+            );
+
+            logManager.flush();
+        }
+
         transaction.markCommitted();
 
         lockManager.releaseAll(
@@ -63,6 +117,28 @@ public class TransactionManager {
         validateActive(
                 transaction
         );
+
+        if (recoveryManager != null) {
+
+            /*
+             * Restore all before-images and
+             * force them to the database file.
+             */
+            recoveryManager
+                    .undoTransaction(
+                            transaction.getId()
+                    );
+
+            /*
+             * Only after the undo is durable do
+             * we record a durable ABORT.
+             */
+            logManager.appendAbort(
+                    transaction.getId()
+            );
+
+            logManager.flush();
+        }
 
         transaction.markAborted();
 
