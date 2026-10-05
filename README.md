@@ -114,18 +114,23 @@ execution.
 - Cost-based access-path selection
 - Cost-based join algorithm selection
 
-### Transactions and Concurrency
+### Transactions, Concurrency, and Recovery
 
 - Transaction IDs and lifecycle states
-- Commit and abort states
-- Transaction-aware record reads and updates
+- Commit and abort
 - Row-level shared and exclusive locks
 - Shared-to-exclusive lock upgrades
 - Locks held until transaction completion
-- Concurrent readers
-- Blocking conflicting readers and writers
-- Thread-safe disk access
-- Record updates that preserve `RecordId`
+- Transaction-aware record reads and updates
+- Write-ahead logging for record updates
+- Monotonically increasing log sequence numbers
+- Full before-images and after-images
+- WAL forced before database updates
+- Durable commit records
+- Rollback of aborted updates
+- REDO of committed updates after restart
+- UNDO of incomplete transactions after restart
+- Recovery across database process restarts
 
 ## Example Query Plan
 
@@ -310,12 +315,16 @@ Current limitations include:
 - hash join requires its build side to fit within a configured memory limit
 - no transaction manager yet
 - no concurrency control yet
-- no write-ahead logging or crash recovery yet
 - transaction locking is not yet integrated into all table operations
 - no deadlock detection or prevention yet
 - no rollback/undo of modified records yet
-- aborted updates are not yet undone
 - transactional inserts and deletes are not yet implemented
+- WAL currently covers record updates, not transactional inserts or deletes
+- recovery uses full before/after images rather than ARIES
+- no checkpoints yet
+- no pageLSN or compensation log records
+- no deadlock detection or prevention yet
+- indexes are still memory-resident
 
 These limitations are being implemented incrementally as the project develops.
 
